@@ -56,7 +56,7 @@ app.post("/webhook", (req, res) => {
             data: body,
             headers: { "Content-Type": "application/json" },
             httpsAgent: httpsAgent, // Set per request instead of global
-            timeout: 10000 // 10 second timeout
+            timeout: 60000 // 60 second timeout
           });
           console.log(`[${new Date().toISOString()}] Webhook POST succeeded. Status: ${response.status}`);
           console.log(`[${new Date().toISOString()}] Webhook response data:`, JSON.stringify(response.data, null, 2));
