@@ -29,7 +29,7 @@ app.post("/webhook", (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
 
-  console.log('JSON ORIGINAL: ' + JSON.stringify(req));
+  console.log('JSON ORIGINAL: ' + JSON.stringify(req, null, 2));
   // Check the Incoming webhook message
   console.log(JSON.stringify(req.body, null, 2));
 
