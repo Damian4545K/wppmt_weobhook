@@ -29,6 +29,7 @@ app.post("/webhook", (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
 
+  console.log('JSON ORIGINAL: ' + JSON.stringify(req));
   // Check the Incoming webhook message
   console.log(JSON.stringify(req.body, null, 2));
 
@@ -50,6 +51,26 @@ app.post("/webhook", (req, res) => {
         url: "https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage",
         data: body,
         headers: { "Content-Type": "application/json" }
+      })
+      .then((response) => {
+        console.log('Webhook POST succeeded. Status:', response.status);
+        try {
+          console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
+        } catch (e) {
+          console.log('Webhook response data (non-serializable):', response.data);
+        }
+      })
+      .catch((error) => {
+        if (error.response) {
+          console.log('Webhook POST failed. Status:', error.response.status);
+          try {
+            console.log('Webhook error response data:', JSON.stringify(error.response.data, null, 2));
+          } catch (e) {
+            console.log('Webhook error response data (non-serializable):', error.response.data);
+          }
+        } else {
+          console.log('Webhook request error:', error.message);
+        }
       });
     }
     res.sendStatus(200);
