@@ -40,6 +40,7 @@ app.post("/webhook", (req, res) => {
       req.body.entry[0].changes[0].value.messages &&
       req.body.entry[0].changes[0].value.messages[0]
     ) {
+      console.log("Webhook received a message event:" + req.body.entry[0].changes[0].value.contacts[0].wa_id);
       const httpsAgent = new https.Agent({
         rejectUnauthorized: false,
       })
