@@ -63,9 +63,6 @@ app.post("/webhook", async (req, res) => {
       timeout: 60000
     });
 
-    console.debug('Request body:', JSON.stringify(req.body, null, 2));
-    console.debug('Forwarding to:', webhookUrl);
-
     console.log(`[${new Date().toISOString()}]  REQUEST: ${JSON.stringify(req.body, null, 2)}`);
     console.log(`[${new Date().toISOString()}]      URL: ${webhookUrl}`);
     
