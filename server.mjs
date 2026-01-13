@@ -29,7 +29,7 @@ app.post("/webhook", (req, res) => {
   // Parse the request body from the POST
   let body = req.body;
   // Check the Incoming webhook message
-  console.log('REQUES ORIGINAL: ' + JSON.stringify(req.body, null, 2));
+  
 
   // info on WhatsApp text message payload: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#text-messages
   if (req.body.object) {
@@ -45,11 +45,14 @@ app.post("/webhook", (req, res) => {
         rejectUnauthorized: false,
       });
       // Use async function for better error handling
+      let _url = process.env.URL_WEBHOOK; //https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage
+      console.log('REQUES: ' + JSON.stringify(req.body, null, 2));
       (async () => {
         try {
+          console.log('   URL: ' + _url);
           const response = await axios({
             method: "POST",
-            url: "https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage",
+            url: _url,
             data: body,
             headers: { "Content-Type": "application/json" },
             httpsAgent: httpsAgent, // Set per request instead of global
