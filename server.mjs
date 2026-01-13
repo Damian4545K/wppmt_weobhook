@@ -27,11 +27,11 @@ app.listen(process.env.PORT || 1337, () => console.log("webhook is listening"));
 // Accepts POST requests at /webhook endpoint
 app.post("/webhook", (req, res) => {
   // Parse the request body from the POST
-  let body = req.body;
+  
   // Check the Incoming webhook message
   
-
   // info on WhatsApp text message payload: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#text-messages
+  
   if (req.body.object) {
     if (
       req.body.entry &&
@@ -46,6 +46,7 @@ app.post("/webhook", (req, res) => {
       });
       // Use async function for better error handling
       let _url = process.env.URL_WEBHOOK; //https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage
+      let body = req.body;
       console.log('REQUES: ' + JSON.stringify(req.body, null, 2));
       (async () => {
         try {
@@ -59,7 +60,6 @@ app.post("/webhook", (req, res) => {
             timeout: 60000 // 60 second timeout
           });
           console.log(`[${new Date().toISOString()}] Webhook POST succeeded. Status: ${response.status}`);
-          console.log(`[${new Date().toISOString()}] Webhook response data:`, JSON.stringify(response.data, null, 2));
         } catch (error) {
           console.error(`[${new Date().toISOString()}] Webhook POST error:`, error.message);
           if (error.response) {
