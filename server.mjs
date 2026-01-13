@@ -43,10 +43,9 @@ app.post("/webhook", async (req, res) => {
 
     // Extraer información importante
     const waId = messageData.contacts?.[0]?.wa_id;
-    const messageId = messageData.messages[0]?.id;
     const messageType = messageData.messages[0]?.type;
     
-    console.log(`[${new Date().toISOString()}] Webhook received - WA_ID: ${waId}, MessageID: ${messageId}, Type: ${messageType}`);
+    console.log(`[${new Date().toISOString()}] Webhook received - WA_ID: ${waId}, Type: ${messageType}`);
 
     // Configuración de axios
     const webhookUrl = process.env.URL_WEBHOOK;
@@ -67,6 +66,9 @@ app.post("/webhook", async (req, res) => {
     console.debug('Request body:', JSON.stringify(req.body, null, 2));
     console.debug('Forwarding to:', webhookUrl);
 
+    console.log(`[${new Date().toISOString()}]  REQUEST: ${JSON.stringify(req.body, null, 2)}`);
+    console.log(`[${new Date().toISOString()}]      URL: ${webhookUrl}`);
+    
     // Enviar al webhook destino con timeout configurable
     const timeout = parseInt(process.env.WEBHOOK_TIMEOUT_MS) || 60000;
     
@@ -78,13 +80,13 @@ app.post("/webhook", async (req, res) => {
       },
       httpsAgent,
       timeout,
-      maxContentLength: 50 * 1024 * 1024, // 50MB
-      maxBodyLength: 50 * 1024 * 1024,    // 50MB
+      maxContentLength: 100 * 1024 * 1024, // 50MB
+      maxBodyLength: 100 * 1024 * 1024,    // 50MB
       validateStatus: (status) => status < 500 // Considerar éxito para códigos < 500
     });
 
     // Log del resultado
-    console.log(`[${new Date().toISOString()}] Forwarded successfully - Status: ${response.status}, WA_ID: ${waId}`);
+    console.log(`[${new Date().toISOString()}] RESPONSE: successfully - Status: ${response.status}, WA_ID: ${waId}`);
 
     // Responder inmediatamente al remitente
     res.sendStatus(200);
