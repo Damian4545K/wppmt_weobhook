@@ -43,34 +43,32 @@ app.post("/webhook", (req, res) => {
       console.log("Webhook received a message event:" + req.body.entry[0].changes[0].value.contacts[0].wa_id);
       const httpsAgent = new https.Agent({
         rejectUnauthorized: false,
-      })
-      axios.defaults.httpsAgent = httpsAgent;
-      axios({
-        method: "POST", // Required, HTTP method, a string, e.g. POST, GET
-        url: "https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage",
-        data: body,
-        headers: { "Content-Type": "application/json" }
-      })
-      .then((response) => {
-        console.log('Webhook POST succeeded. Status:', response.status);
-        try {
-          console.log('Webhook response data:', JSON.stringify(response.data, null, 2));
-        } catch (e) {
-          console.log('Webhook response data (non-serializable):', response.data);
-        }
-      })
-      .catch((error) => {
-        if (error.response) {
-          console.log('Webhook POST failed. Status:', error.response.status);
-          try {
-            console.log('Webhook error response data:', JSON.stringify(error.response.data, null, 2));
-          } catch (e) {
-            console.log('Webhook error response data (non-serializable):', error.response.data);
-          }
-        } else {
-          console.log('Webhook request error:', error.message);
-        }
       });
+      // Use async function for better error handling
+      (async () => {
+        try {
+          const response = await axios({
+            method: "POST",
+            url: "https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage",
+            data: body,
+            headers: { "Content-Type": "application/json" },
+            httpsAgent: httpsAgent, // Set per request instead of global
+            timeout: 10000 // 10 second timeout
+          });
+          console.log(`[${new Date().toISOString()}] Webhook POST succeeded. Status: ${response.status}`);
+          console.log(`[${new Date().toISOString()}] Webhook response data:`, JSON.stringify(response.data, null, 2));
+        } catch (error) {
+          console.error(`[${new Date().toISOString()}] Webhook POST error:`, error.message);
+          if (error.response) {
+            console.error(`[${new Date().toISOString()}] Webhook POST failed. Status: ${error.response.status}`);
+            console.error(`[${new Date().toISOString()}] Webhook error response data:`, JSON.stringify(error.response.data, null, 2));
+          } else if (error.code === 'ECONNABORTED') {
+            console.error(`[${new Date().toISOString()}] Webhook POST timed out`);
+          } else {
+            console.error(`[${new Date().toISOString()}] Webhook request error:`, error.message);
+          }
+        }
+      })();
     }
     res.sendStatus(200);
   } else {
