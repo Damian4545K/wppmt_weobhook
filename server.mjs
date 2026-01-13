@@ -25,58 +25,97 @@ const app = express().use(body_parser.json()); // creates express http server
 app.listen(process.env.PORT || 1337, () => console.log("webhook is listening"));
 
 // Accepts POST requests at /webhook endpoint
-app.post("/webhook", (req, res) => {
-  // Parse the request body from the POST
-  
-  // Check the Incoming webhook message
-  
-  // info on WhatsApp text message payload: https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#text-messages
-  
-  if (req.body.object) {
-    if (
-      req.body.entry &&
-      req.body.entry[0].changes &&
-      req.body.entry[0].changes[0] &&
-      req.body.entry[0].changes[0].value.messages &&
-      req.body.entry[0].changes[0].value.messages[0]
-    ) {
-      console.log("Webhook received a message event: " + req.body.entry[0].changes[0].value.contacts[0].wa_id);
-      const httpsAgent = new https.Agent({
-        rejectUnauthorized: false,
-      });
-      // Use async function for better error handling
-      let _url = process.env.URL_WEBHOOK; //https://20.64.248.250/BCP.DevMeta.WebHook/WebHook/WPPReceiveMessage
-      let body = req.body;
-      console.log('REQUES: ' + JSON.stringify(req.body, null, 2));
-      (async () => {
-        try {
-          console.log('   URL: ' + _url);
-          const response = await axios({
-            method: "POST",
-            url: _url,
-            data: body,
-            headers: { "Content-Type": "application/json" },
-            httpsAgent: httpsAgent, // Set per request instead of global
-            timeout: 60000 // 60 second timeout
-          });
-          console.log(`[${new Date().toISOString()}] Webhook POST succeeded. Status: ${response.status}`);
-        } catch (error) {
-          console.error(`[${new Date().toISOString()}] Webhook POST error:`, error.message);
-          if (error.response) {
-            console.error(`[${new Date().toISOString()}] Webhook POST failed. Status: ${error.response.status}`);
-            console.error(`[${new Date().toISOString()}] Webhook error response data:`, JSON.stringify(error.response.data, null, 2));
-          } else if (error.code === 'ECONNABORTED') {
-            console.error(`[${new Date().toISOString()}] Webhook POST timed out`);
-          } else {
-            console.error(`[${new Date().toISOString()}] Webhook request error:`, error.message);
-          }
-        }
-      })();
+app.post("/webhook", async (req, res) => {
+  try {
+    // Validar que sea un webhook de WhatsApp válido
+    if (!req.body.object) {
+      console.warn(`[${new Date().toISOString()}] Received non-WhatsApp webhook`);
+      return res.sendStatus(404);
     }
+
+    // Validar estructura del payload de manera más limpia
+    const messageData = req.body.entry?.[0]?.changes?.[0]?.value;
+    
+    if (!messageData?.messages?.[0]) {
+      console.log(`[${new Date().toISOString()}] Webhook received without message data`);
+      return res.sendStatus(200);
+    }
+
+    // Extraer información importante
+    const waId = messageData.contacts?.[0]?.wa_id;
+    const messageId = messageData.messages[0]?.id;
+    const messageType = messageData.messages[0]?.type;
+    
+    console.log(`[${new Date().toISOString()}] Webhook received - WA_ID: ${waId}, MessageID: ${messageId}, Type: ${messageType}`);
+
+    // Configuración de axios
+    const webhookUrl = process.env.URL_WEBHOOK;
+    
+    if (!webhookUrl) {
+      console.error(`[${new Date().toISOString()}] URL_WEBHOOK environment variable is not set`);
+      return res.status(500).send("Server configuration error");
+    }
+
+    // Configurar agente HTTPS (solo para desarrollo, en producción usar certificados válidos)
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+      keepAlive: true,
+      maxSockets: 50,
+      timeout: 60000
+    });
+
+    console.debug('Request body:', JSON.stringify(req.body, null, 2));
+    console.debug('Forwarding to:', webhookUrl);
+
+    // Enviar al webhook destino con timeout configurable
+    const timeout = parseInt(process.env.WEBHOOK_TIMEOUT_MS) || 60000;
+    
+    const response = await axios.post(webhookUrl, req.body, {
+      headers: { 
+        "Content-Type": "application/json",
+        "X-Forwarded-For": req.ip,
+        "User-Agent": "Webhook-Proxy/1.0"
+      },
+      httpsAgent,
+      timeout,
+      maxContentLength: 50 * 1024 * 1024, // 50MB
+      maxBodyLength: 50 * 1024 * 1024,    // 50MB
+      validateStatus: (status) => status < 500 // Considerar éxito para códigos < 500
+    });
+
+    // Log del resultado
+    console.log(`[${new Date().toISOString()}] Forwarded successfully - Status: ${response.status}, WA_ID: ${waId}`);
+
+    // Responder inmediatamente al remitente
     res.sendStatus(200);
-  } else {
-    // Return a '404 Not Found' if event is not from a WhatsApp API
-    res.sendStatus(404);
+
+  } catch (error) {
+    // Manejo centralizado de errores
+    console.error(`[${new Date().toISOString()}] Webhook processing error:`, {
+      message: error.message,
+      code: error.code,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+
+    // Manejo específico de errores de axios
+    if (error.response) {
+      console.error(`[${new Date().toISOString()}] Destination responded with error:`, {
+        status: error.response.status,
+        data: error.response.data
+      });
+    } else if (error.code === 'ECONNABORTED') {
+      console.error(`[${new Date().toISOString()}] Request timeout to destination`);
+    } else if (error.code === 'ENOTFOUND') {
+      console.error(`[${new Date().toISOString()}] Destination host not found: ${process.env.URL_WEBHOOK}`);
+    }
+
+    // Aún respondemos 200 a WhatsApp para evitar reintentos
+    // (a menos que sea un error de configuración del servidor)
+    if (error.message.includes('environment variable')) {
+      res.status(500).send("Server configuration error");
+    } else {
+      res.sendStatus(200);
+    }
   }
 });
 
